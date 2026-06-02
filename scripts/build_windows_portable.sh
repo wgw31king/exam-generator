@@ -46,7 +46,7 @@ echo "==> 下载 Windows 依赖 wheel（在 Mac 上交叉下载）"
 echo "==> 复制程序与模板"
 APP_FILES=(
   main.py assembler.py renderer.py formatter.py models.py
-  doc_styles.py paths.py
+  doc_styles.py paths.py bank_resolver.py
 )
 for f in "${APP_FILES[@]}"; do
   cp "$ROOT/$f" "$RELEASE/"

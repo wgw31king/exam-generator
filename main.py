@@ -16,6 +16,7 @@ import argparse
 import yaml
 
 from assembler import BatchAssembler, InsufficientQuestionsError
+from bank_resolver import discover_bank_files, format_bank_listing
 from paths import app_dir, resolve_path
 from renderer import render_paper
 
@@ -60,6 +61,9 @@ def resolve(path: str | Path) -> Path:
 
 
 def apply_excel_overrides(config: dict, args: argparse.Namespace) -> None:
+    if getattr(args, "bank", None):
+        config.pop("excel", None)
+        return
     mapping = {
         "single": args.single,
         "multiple": args.multiple,
@@ -68,7 +72,57 @@ def apply_excel_overrides(config: dict, args: argparse.Namespace) -> None:
     }
     for key, value in mapping.items():
         if value:
+            config.setdefault("excel", {})
             config["excel"][key] = value
+
+
+def _has_cli_excel_overrides(args: argparse.Namespace) -> bool:
+    return any((args.single, args.multiple, args.judge, args.qa))
+
+
+def _pick_bank_name(banks: dict[str, str]) -> str:
+    names = list(banks.keys())
+    if len(names) == 1:
+        return names[0]
+
+    print("请选择题库：")
+    for index, name in enumerate(names, start=1):
+        print(f"  {index}. {name}")
+    while True:
+        raw = input("请输入编号: ").strip()
+        if raw.isdigit() and 1 <= int(raw) <= len(names):
+            return names[int(raw) - 1]
+        print("请输入有效编号。")
+
+
+def resolve_excel_paths(config: dict, args: argparse.Namespace) -> tuple[dict[str, str], str | None]:
+    if _has_cli_excel_overrides(args):
+        return build_excel_paths(config), None
+
+    banks = config.get("banks")
+    if banks:
+        if args.bank:
+            bank_name = args.bank
+            if bank_name not in banks:
+                raise SystemExit(
+                    f"未知题库「{bank_name}」。可选: {', '.join(banks.keys())}"
+                )
+        elif config.get("active_bank"):
+            bank_name = config["active_bank"]
+            if bank_name not in banks:
+                raise SystemExit(
+                    f"config.yaml 中 active_bank={bank_name!r} 不在 banks 列表里。"
+                )
+        else:
+            bank_name = _pick_bank_name(banks)
+
+        folder = resolve(banks[bank_name])
+        discovered = discover_bank_files(folder)
+        print(f"已选择题库: {bank_name}")
+        print(format_bank_listing(discovered))
+        return {key: str(path) for key, path in discovered.items()}, bank_name
+
+    return build_excel_paths(config), None
 
 
 def generate_batch(
@@ -76,6 +130,7 @@ def generate_batch(
     paper_count: int,
     seed: int | None,
     excel_paths: dict[str, str],
+    bank_name: str | None = None,
 ) -> list[Path]:
     counts = {
         "single": config["paper"]["single_count"],
@@ -94,7 +149,10 @@ def generate_batch(
     outputs: list[Path] = []
     for index in range(1, paper_count + 1):
         paper = batch.assemble_next(index)
-        filename = config["output"]["filename_pattern"].format(n=index)
+        filename = config["output"]["filename_pattern"].format(
+            n=index,
+            bank=bank_name or "",
+        )
         output_path = output_dir / filename
         render_paper(
             template_path,
@@ -107,17 +165,14 @@ def generate_batch(
 
 
 def build_excel_paths(config: dict) -> dict[str, str]:
-    from importers.base import ensure_readable_excel
-
     paths = {}
     missing: list[str] = []
     for key, path in config["excel"].items():
         resolved = resolve(path)
         if not resolved.exists():
             missing.append(f"  {key}: {resolved}")
-            continue
-        readable = ensure_readable_excel(resolved)
-        paths[key] = str(readable)
+        else:
+            paths[key] = str(resolved)
 
     if missing:
         bank_dir = app_dir() / "题库"
@@ -146,6 +201,10 @@ def main() -> None:
     parser.add_argument("--multiple", help="多选题库 .xls 路径（覆盖 config）")
     parser.add_argument("--judge", help="判断题库 .xls 路径（覆盖 config）")
     parser.add_argument("--qa", help="问答题库 .xls 路径（覆盖 config）")
+    parser.add_argument(
+        "--bank",
+        help="banks 配置中的题库名称，如 操作初级（跳过交互选择）",
+    )
     args = parser.parse_args()
 
     paper_count = args.count
@@ -165,11 +224,10 @@ def main() -> None:
 
     config = load_config(resolve(args.config))
     apply_excel_overrides(config, args)
-    print("正在检查题库格式（WPS/麒麟格式会自动转换）...", flush=True)
-    excel_paths = build_excel_paths(config)
+    excel_paths, bank_name = resolve_excel_paths(config, args)
 
     try:
-        outputs = generate_batch(config, paper_count, seed, excel_paths)
+        outputs = generate_batch(config, paper_count, seed, excel_paths, bank_name)
     except InsufficientQuestionsError as exc:
         raise SystemExit(f"组卷失败: {exc}") from exc
     except Exception as exc:

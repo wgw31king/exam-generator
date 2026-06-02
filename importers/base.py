@@ -165,18 +165,27 @@ def _find_libreoffice() -> list[str] | None:
         "soffice",
         "/usr/bin/libreoffice",
         "/usr/bin/soffice",
+        "/usr/lib/libreoffice/program/soffice",
         "/opt/libreoffice/program/soffice",
         "/opt/libreoffice7.6/program/soffice",
         "/opt/libreoffice7.5/program/soffice",
-        "/opt/kingsoft/wps-office/office6/wps",
-        "/usr/bin/wps",
+        "/opt/libreoffice7.3/program/soffice",
     ]
     for candidate in candidates:
         path = Path(candidate)
-        if path.name in ("libreoffice", "soffice", "wps") and shutil.which(candidate):
+        if path.name in ("libreoffice", "soffice") and shutil.which(candidate):
             return [candidate, "--headless", "--convert-to"]
         if path.is_file():
             return [str(path), "--headless", "--convert-to"]
+
+    import glob
+    for pattern in (
+        "/opt/libreoffice*/program/soffice",
+        "/opt/apps/*/files/LibreOffice/program/soffice",
+    ):
+        for match in sorted(glob.glob(pattern)):
+            if Path(match).is_file():
+                return [match, "--headless", "--convert-to"]
     return None
 
 
@@ -221,9 +230,14 @@ def _convert_with_libreoffice(source: Path, destination: Path) -> Path:
                     return destination
 
         if converted is None:
+            if _find_libreoffice() is None:
+                raise ValueError(_format_hint(source, _read_header(source)))
             raise ValueError(
-                f"无法转换 {source.name}。\n"
-                "请安装 LibreOffice 表格，或运行 ./转换题库格式.sh"
+                f"无法转换 {source.name}（LibreOffice 无法读取 WPS 格式）。\n"
+                "请尝试：\n"
+                "  1. 运行: ./转换题库格式.sh\n"
+                "  2. 用 LibreOffice 表格打开 → 另存为 → Excel 97-2003 (.xls)\n"
+                "  3. 若未安装 LibreOffice，请从麒麟软件中心安装"
             )
 
         shutil.copy2(converted, destination)

@@ -4,17 +4,31 @@ template:
 paper:
   title: ""
   single_count: 30
-  multiple_count: 20
-  judge_count: 20
+  multiple_count: 10
+  judge_count: 30
   short_count: 5
 
 output:
   dir: "~/Desktop"
-  filename_pattern: "待命名试卷_{n}.docx"
+  filename_pattern: "{bank}试卷_{n}.docx"
   auto_volume_name: false
 
-excel:
-  single: "题库/单选.xls"
-  multiple: "题库/多选.xls"
-  judge: "题库/判断.xls"
-  qa: "题库/问答.xls"
+# 方式一（推荐）：配置桌面上的多个题库文件夹，运行时选择编号即可。
+# 程序会自动识别文件夹里文件名含 单选/多选/判断/问答 的 .xls。
+banks:
+  操作初级: "C:/Users/27412/Desktop/操作初级"
+  操作中级: "C:/Users/27412/Desktop/操作中级"
+  操作高级: "C:/Users/27412/Desktop/操作高级"
+  维修初级: "C:/Users/27412/Desktop/维修初级_"
+  维修中级: "C:/Users/27412/Desktop/维修中级"
+  维修高级: "C:/Users/27412/Desktop/维修高级_"
+
+# 若不想每次选择，可指定默认题库：
+# active_bank: "操作初级"
+
+# 方式二：仍可使用固定四个文件（与 banks 二选一，有 banks 时优先 banks）
+# excel:
+#   single: "题库/单选.xls"
+#   multiple: "题库/多选.xls"
+#   judge: "题库/判断.xls"
+#   qa: "题库/问答.xls"
