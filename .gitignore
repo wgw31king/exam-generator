@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+output/*.docx
+output/*_组卷日志.txt
+.DS_Store
+build/
+dist/
+release/
+build/windows-portable-cache/
+*.spec.bak

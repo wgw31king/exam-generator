@@ -1,0 +1,21 @@
+template:
+  path: "templates/template.docx"
+
+paper:
+  title: ""
+  single_count: 30
+  multiple_count: 20
+  judge_count: 20
+  short_count: 5
+
+output:
+  dir: "~/Desktop"
+  filename_pattern: "待命名试卷_{n}.docx"
+  auto_volume_name: false
+
+# 题库路径（微信 drag 目录，可直接修改）
+excel:
+  single: "/Users/wahhh/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/wxid_6zwfhp2pvojd22_559b/temp/drag/710型舰柴油机专业操作技能高级--单选-旧标签转换202405-311722-旧标签转换202407-091023-旧标签转换202402-130859(1).xls"
+  multiple: "/Users/wahhh/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/wxid_6zwfhp2pvojd22_559b/temp/drag/710型舰柴油机专业操作技能高级--多选-旧标签转换202405-311722-旧标签转换202407-091023(1).xls"
+  judge: "/Users/wahhh/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/wxid_6zwfhp2pvojd22_559b/temp/drag/710型舰柴油机专业操作技能高级--判断-旧标签转换202405-311722-旧标签转换202407-091023-旧标签转换202402-130859(1).xls"
+  qa: "/Users/wahhh/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/wxid_6zwfhp2pvojd22_559b/temp/drag/710型船柴油机专业维修技能初级--问答-旧标签转换202405-311723-旧标签转换202407-091024(1).xls"

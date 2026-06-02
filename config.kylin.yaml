@@ -1,0 +1,20 @@
+template:
+  path: "templates/template.docx"
+
+paper:
+  title: ""
+  single_count: 30
+  multiple_count: 20
+  judge_count: 20
+  short_count: 5
+
+output:
+  dir: "~/桌面"
+  filename_pattern: "待命名试卷_{n}.docx"
+  auto_volume_name: false
+
+excel:
+  single: "题库/单选.xls"
+  multiple: "题库/多选.xls"
+  judge: "题库/判断.xls"
+  qa: "题库/问答.xls"
