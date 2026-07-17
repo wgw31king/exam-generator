@@ -13,6 +13,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 RELEASE = ROOT / "release"
+# PyInstaller 产物用 ASCII 名，发布时再命名为中文 exe，避免 CI 编码问题
+BUILD_EXE_STEM = "ZujuanTool"
 EXE_NAME = "组卷工具.exe" if platform.system() == "Windows" else "组卷工具"
 APP_NAME = "组卷工具.app"
 
@@ -149,21 +151,27 @@ def build_release(*, make_zip: bool = False) -> Path:
     release_dir = RELEASE / "组卷工具"
     release_dir.mkdir(parents=True, exist_ok=True)
 
-    built_exe = DIST / EXE_NAME
-    if not built_exe.exists() and platform.system() == "Darwin":
+    candidates = [
+        DIST / f"{BUILD_EXE_STEM}.exe",
+        DIST / BUILD_EXE_STEM,
+        DIST / EXE_NAME,
+        DIST / EXE_NAME.replace(".exe", ""),
+    ]
+    built_exe = next((p for p in candidates if p.exists()), None)
+    if built_exe is None and platform.system() == "Darwin":
         built_app = DIST / APP_NAME
         if built_app.exists():
             built_exe = built_app / "Contents" / "MacOS" / "组卷工具"
-    if not built_exe.exists():
-        candidates = list(DIST.glob("*"))
-        raise FileNotFoundError(f"未找到打包产物，dist 目录内容: {candidates}")
+            if not built_exe.exists():
+                built_exe = built_app / "Contents" / "MacOS" / BUILD_EXE_STEM
+    if built_exe is None or not built_exe.exists():
+        listing = list(DIST.glob("**/*")) if DIST.exists() else []
+        raise FileNotFoundError(f"未找到打包产物，dist 内容: {listing}")
 
-    if platform.system() == "Darwin" and built_exe.suffix != ".exe":
-        shutil.copy2(built_exe, release_dir / EXE_NAME.replace(".exe", ""))
-        exe_in_release = release_dir / EXE_NAME.replace(".exe", "")
-        exe_in_release.chmod(0o755)
-    else:
-        shutil.copy2(built_exe, release_dir / EXE_NAME)
+    target_name = EXE_NAME if platform.system() == "Windows" else EXE_NAME.replace(".exe", "")
+    shutil.copy2(built_exe, release_dir / target_name)
+    if platform.system() != "Windows":
+        (release_dir / target_name).chmod(0o755)
 
     # 确保模板目录在 exe 旁也有一份（便于检查；PyInstaller 已内嵌）
     templates_dir = release_dir / "templates"
