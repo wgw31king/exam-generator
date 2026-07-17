@@ -225,8 +225,9 @@ cat > "$RELEASE/使用说明.txt" <<'EOF'
 
 2. 打开终端进入目录：
    cd /home/kylin/组卷工具-麒麟ARM
-   chmod +x 组卷.sh 组卷-命令行.sh 环境检测.sh 安装桌面快捷方式.sh
-   ./组卷.sh
+   chmod +x start.sh 组卷.sh *.sh
+   ./start.sh
+   （或 ./组卷.sh，二者相同）
 
 3. 浏览器打开组卷界面后：
    - 填写单选/多选/判断/简答四个题库路径（或把 xls 放进「题库」后在界面填写）
@@ -234,10 +235,10 @@ cat > "$RELEASE/使用说明.txt" <<'EOF'
    - 默认输出到「桌面」
 
 【可选】
-  ./环境检测.sh              检查依赖
-  ./安装桌面快捷方式.sh      桌面图标「组卷」
-  ./组卷-命令行.sh           命令行模式
-  ./转换题库格式.sh          题库格式异常时转换
+  ./check-env.sh / ./环境检测.sh
+  ./install-desktop.sh / ./安装桌面快捷方式.sh
+  ./start-cli.sh / ./组卷-命令行.sh
+  ./convert-banks.sh / ./转换题库格式.sh
 
 【输出】
   默认：~/桌面/待命名试卷_1.docx …
@@ -246,15 +247,41 @@ cat > "$RELEASE/使用说明.txt" <<'EOF'
   请保持整个文件夹一起使用，不要只拷贝单个脚本。
 EOF
 
-echo "==> 打包 zip（扁平结构，解压即见 组卷.sh）"
+# ASCII 别名，避免部分环境中文文件名乱码
+cp "$RELEASE/组卷.sh" "$RELEASE/start.sh"
+cp "$RELEASE/组卷-命令行.sh" "$RELEASE/start-cli.sh"
+cp "$RELEASE/环境检测.sh" "$RELEASE/check-env.sh"
+cp "$RELEASE/安装桌面快捷方式.sh" "$RELEASE/install-desktop.sh"
+cp "$RELEASE/转换题库格式.sh" "$RELEASE/convert-banks.sh"
+cp "$RELEASE/使用说明.txt" "$RELEASE/README.txt"
+chmod +x "$RELEASE"/*.sh
+
+echo "==> 打包 zip（UTF-8 文件名 + 扁平结构）"
 rm -f "$ZIP_OUT"
 STAGE="$ROOT/release/KylinArmPack"
 rm -rf "$STAGE"
 cp -R "$RELEASE" "$STAGE"
-(cd "$STAGE" && zip -r "$ZIP_OUT" . -x "*.pyc" -x "*__pycache__*")
+"$ROOT/.venv/bin/python" - <<PY
+from pathlib import Path
+import zipfile
+stage = Path("$STAGE")
+zip_path = Path("$ZIP_OUT")
+with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+    for path in sorted(stage.rglob("*")):
+        if not path.is_file():
+            continue
+        if "__pycache__" in path.parts or path.suffix == ".pyc":
+            continue
+        arc = path.relative_to(stage).as_posix()
+        info = zipfile.ZipInfo(arc)
+        info.compress_type = zipfile.ZIP_DEFLATED
+        info.flag_bits |= 0x800
+        zf.writestr(info, path.read_bytes())
+print("wrote", zip_path)
+PY
 
 echo ""
 echo "完成！"
 echo "  目录: $RELEASE"
 echo "  压缩包: $ZIP_OUT"
-echo "  拷到飞腾麒麟后：解压 → chmod +x 组卷.sh → ./组卷.sh"
+echo "  拷到飞腾麒麟后：解压 → chmod +x start.sh → ./start.sh"
