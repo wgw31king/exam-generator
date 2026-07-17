@@ -6,7 +6,10 @@
 
 ```
 exam-generator/
-├── main.py                 # CLI 入口
+├── main.py                 # CLI 入口（可用 --ui 开图形界面）
+├── app.py                  # 图形界面入口
+├── ui.py                   # tkinter 一键组卷界面
+├── service.py              # CLI / UI 共用组卷 API
 ├── config.yaml             # 题量、路径、模板
 ├── models.py               # 统一数据模型
 ├── assembler.py            # 随机组卷
@@ -38,13 +41,26 @@ textutil -convert docx -output templates/template_raw.docx \
 python scripts/prepare_template.py
 python scripts/build_qa_sample.py   # 若问答.xls 非标准格式
 
-# 生成试卷
+# 图形界面（推荐）：选题库 / 改题量 → 点「生成试卷」
+python app.py
+# 或：python main.py --ui
+# 有 tkinter 时开桌面窗口；否则自动打开 http://127.0.0.1:8765/ 网页界面
+
+# CLI 生成试卷
 python main.py --count 1 --seed 42
-# 输出：output/待命名试卷_1.docx + output/待命名试卷_1_组卷日志.txt
+# 输出：桌面或 config 中 output.dir 下的 docx
 
 python main.py --count 6          # 批量
 python -m pytest tests/ -q          # 测试
 ```
+
+### 图形界面说明
+
+1. 启动 `python app.py`（优先桌面窗口；无 tkinter 时自动开本地网页）
+2. 分别填写（或浏览）单选 / 多选 / 判断 / 简答 四个 `.xls` 路径；若配置了 `banks`，可用「快捷填充」一键回填
+3. 按需修改题量、份数、随机种子、标题、输出目录
+4. 点击「生成试卷」；桌面版成功后可「打开输出文件夹」
+5. 设置会写入程序目录下的 `ui_state.yaml`（下次自动恢复）
 
 ## template.docx 制作步骤
 
@@ -61,7 +77,7 @@ python -m pytest tests/ -q          # 测试
 | `{{p multiple_questions }}` | 多选 10 题正文 |
 | `{{p judge_questions }}` | 判断 30 题正文 |
 | `{{p short_questions }}` | 简答 5 题 + 空白行 |
-| `{{ paper_title }}` | 答案标题括号内名称（可留空） |
+| `{{ paper_title }}` | 卷首直接显示标题；答案区为「《标题》答案」；留空时两处均用「待命名试卷」 |
 | `{{p single_answer_lines }}` | 单选答案（每行 5 题） |
 | `{{p multiple_answer_lines }}` | 多选答案 |
 | `{{p judge_answer_lines }}` | 判断答案 |
@@ -93,14 +109,23 @@ python -m pytest tests/ -q          # 测试
 - [ ] 正文无答案；末尾答案区格式正确
 - [ ] 文件名无 A卷/B卷
 
-## 阶段二（验收通过后）
+## Windows 打包分发
+
+本机是 Mac 时，**不能**直接打出 Windows `.exe`（PyInstaller 需在 Windows 上运行）。
+
+### 方式 A（推荐，可在 Mac 上打）：Windows 离线便携包
 
 ```bash
-pip install pyinstaller
-pyinstaller --noconfirm --windowed --name 组卷工具 \
-  --add-data "templates/template.docx:templates" \
-  --add-data "config.yaml:." \
-  main.py
+bash scripts/build_windows_portable.sh
 ```
 
-在无 Python 的 Windows 10/11 实机测试。
+产物：桌面上的 `组卷工具-Windows离线版.zip`（内置 Python，目标机无需安装）。
+解压后双击 `组卷.bat` 即可打开组卷界面。
+
+### 方式 B：真正的单个 `.exe`（必须在 Windows 电脑上）
+
+```bat
+scripts\build_release.bat
+```
+
+产物：`release\组卷工具\组卷工具.exe`，双击 `组卷.bat` 启动界面。

@@ -41,6 +41,7 @@ def _prepare_question_bank_dir(release_dir: Path) -> None:
 
 
 def _write_windows_launcher(release_dir: Path) -> None:
+    # 双击 exe 已默认开界面；bat 仅作备用入口
     launcher = release_dir / "组卷.bat"
     launcher.write_text(
         "\n".join(
@@ -50,13 +51,28 @@ def _write_windows_launcher(release_dir: Path) -> None:
                 "set PYTHONUTF8=1",
                 "set PYTHONIOENCODING=utf-8",
                 'cd /d "%~dp0"',
-                f'"{EXE_NAME}"',
+                f'start "" "{EXE_NAME}"',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    cli = release_dir / "组卷-命令行.bat"
+    cli.write_text(
+        "\n".join(
+            [
+                "@echo off",
+                "chcp 65001 >nul",
+                "set PYTHONUTF8=1",
+                "set PYTHONIOENCODING=utf-8",
+                'cd /d "%~dp0"',
+                f'"{EXE_NAME}" --cli %*',
                 "echo.",
                 "pause",
                 "",
             ]
         ),
-        encoding="ascii",
+        encoding="utf-8",
     )
 
 
@@ -67,16 +83,7 @@ def _write_mac_launcher(release_dir: Path) -> None:
             [
                 "#!/bin/bash",
                 'cd "$(dirname "$0")"',
-                'read -p "请输入要生成的试卷份数: " COUNT',
-                'while ! [[ "$COUNT" =~ ^[1-9][0-9]*$ ]]; do',
-                '  read -p "请输入大于 0 的整数: " COUNT',
-                "done",
-                'read -p "请输入随机种子(直接回车则随机): " SEED',
-                'if [ -z "$SEED" ]; then',
-                f'  ./{EXE_NAME.replace(".exe", "")} --count "$COUNT"',
-                "else",
-                f'  ./{EXE_NAME.replace(".exe", "")} --count "$COUNT" --seed "$SEED"',
-                "fi",
+                f'./{EXE_NAME.replace(".exe", "")} --ui',
                 'read -p "按回车键关闭..."',
                 "",
             ]
@@ -95,24 +102,20 @@ def _write_readme(release_dir: Path) -> None:
                 "",
                 "【首次使用】",
                 "1. 将整个「组卷工具」文件夹复制到目标 Windows 电脑",
-                "2. 把四个题库 .xls 放入「题库」文件夹（见该目录内说明）",
-                "   或在 config.yaml 中改为本机路径",
-                "3. 双击「组卷.bat」",
-                "4. 按提示输入本次要生成的试卷份数",
+                "2. 把四个题库 .xls 放入「题库」文件夹，或在界面中粘贴完整路径",
+                "3. 双击「组卷工具.exe」（或 组卷.bat）启动组卷界面",
+                "4. 填写单选/多选/判断/简答路径与题量，点「生成试卷」",
+                "5. 无需安装 Python，可免费使用",
                 "",
                 "【目录说明】",
-                f"  {EXE_NAME}    主程序",
-                "  组卷.bat          双击启动（每次输入份数）",
-                "  config.yaml       题量、输出目录、题库路径",
-                "  题库/             自行放入四个 Excel 题库",
-                "",
-                "【config.yaml 可修改项】",
-                "  paper.single_count / multiple_count / judge_count / short_count",
-                "  output.dir        输出目录，默认桌面",
-                "  excel.*           四个题库的 .xls 路径",
+                f"  {EXE_NAME}       主程序（双击即可）",
+                "  组卷.bat             备用启动",
+                "  组卷-命令行.bat      命令行模式",
+                "  config.yaml          默认题量、输出目录、题库路径",
+                "  题库/                自行放入四个 Excel 题库",
                 "",
                 "【命令行（可选）】",
-                "  组卷工具.exe --count 10",
+                "  组卷工具.exe --cli",
                 "  组卷工具.exe --count 10 --seed 42",
                 "",
                 "【输出】",

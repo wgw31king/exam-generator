@@ -20,6 +20,10 @@ hiddenimports = [
     "xlrd",
     "xlrd.biffh",
     "yaml",
+    "service",
+    "ui",
+    "web_ui",
+    "app",
 ]
 
 a = Analysis(

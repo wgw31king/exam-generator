@@ -48,6 +48,13 @@ def _add_placeholder(doc: Document, text: str) -> None:
 def build_minimal_template() -> None:
     doc = Document()
 
+    cover = doc.add_paragraph()
+    cover.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    cover_run = cover.add_run(
+        "{% if paper_title %}{{ paper_title }}{% else %}待命名试卷{% endif %}"
+    )
+    set_run_font(cover_run, bold=True)
+
     for key in ("single", "multiple", "judge", "short"):
         _add_section_header(doc, SECTION_HEADERS[key])
         _add_placeholder(doc, QUESTION_PLACEHOLDERS[key])
@@ -55,7 +62,9 @@ def build_minimal_template() -> None:
     answer_title = doc.add_paragraph()
     answer_title.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
     answer_title.add_run().add_break(WD_BREAK.PAGE)
-    title_run = answer_title.add_run("{% if paper_title %}《{{ paper_title }}》{% endif %}答案")
+    title_run = answer_title.add_run(
+        "《{% if paper_title %}{{ paper_title }}{% else %}待命名试卷{% endif %}》答案"
+    )
     set_run_font(title_run, bold=True)
 
     for section_title, placeholder in ANSWER_SECTIONS:

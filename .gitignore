@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 output/*.docx
 output/*_组卷日志.txt
+ui_state.yaml
 .DS_Store
 build/
 dist/
