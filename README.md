@@ -109,17 +109,13 @@ python -m pytest tests/ -q          # 测试
 - [ ] 正文无答案；末尾答案区格式正确
 - [ ] 文件名无 A卷/B卷
 
-## Windows 一键包（解压 → 双击 exe）
+## 麒麟 ARM 离线包
 
-目标体验：解压后看到 `组卷工具.exe`，双击即可用，**不用敲任何命令**。
+分支建议：`feat/kylin-portable`
 
-本机是 Mac，无法本地生成真正的 `.exe`。已配置 GitHub Actions：在云端 Windows 自动打包。
+```bash
+bash scripts/build_kylin_arm_portable.sh
+```
 
-### 你怎么拿到 .exe 包
-
-1. 把当前代码推到 GitHub（分支 `feat/windows` 或 `main`）
-2. 打开仓库 → **Actions** → **Build Windows EXE** → 等绿色勾
-3. 点进本次运行 → **Artifacts** → 下载 `组卷工具-Windows`
-4. 解压后双击 `组卷工具.exe`
-
-也可在 Actions 页点 **Run workflow** 手动触发。
+产物：桌面 `组卷工具-麒麟ARM离线版.zip`（aarch64 / 飞腾麒麟）。
+解压后执行 `./组卷.sh` 打开网页组卷界面。

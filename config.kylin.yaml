@@ -4,8 +4,8 @@ template:
 paper:
   title: ""
   single_count: 30
-  multiple_count: 20
-  judge_count: 20
+  multiple_count: 10
+  judge_count: 30
   short_count: 5
 
 output:
