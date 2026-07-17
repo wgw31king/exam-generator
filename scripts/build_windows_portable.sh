@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# 在 Mac 上构建 Windows 离线便携包（内置 Python，目标机无需联网/无需安装 Python）
-# 说明：此包不是单个 .exe；真正的 .exe 需在 Windows 上运行 scripts/build_release.bat
+# 在 Mac 上构建 Windows 离线便携包（内置 Python + 可双击的 .exe 启动器）
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,10 +11,23 @@ CACHE="$ROOT/build/windows-portable-cache"
 BUILD="$ROOT/build/windows-portable"
 EMBED_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-embed-amd64.zip"
 ZIP_OUT="$HOME/Desktop/组卷工具-Windows离线版.zip"
+LAUNCHER_DIR="$ROOT/scripts/windows_launcher"
 
 echo "==> 清理旧产物"
 rm -rf "$ROOT/release" "$BUILD"
 mkdir -p "$CACHE/wheels" "$BUILD" "$RELEASE/python" "$RELEASE/题库" "$RELEASE/templates"
+
+echo "==> 交叉编译 Windows 启动器 组卷工具.exe"
+if ! command -v go >/dev/null 2>&1; then
+  echo "未找到 go，请先: brew install go"
+  exit 1
+fi
+(
+  cd "$LAUNCHER_DIR"
+  GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o "$RELEASE/组卷工具.exe" .
+)
+cp "$RELEASE/组卷工具.exe" "$RELEASE/ZujuanTool.exe"
+ls -lh "$RELEASE/组卷工具.exe" "$RELEASE/ZujuanTool.exe"
 
 echo "==> 下载 Windows 嵌入式 Python ${PYTHON_VERSION}"
 if [[ -f "$CACHE/embed.zip" ]]; then
@@ -53,7 +65,9 @@ APP_FILES=(
 for f in "${APP_FILES[@]}"; do
   cp "$ROOT/$f" "$RELEASE/"
 done
-cp -R "$ROOT/importers" "$RELEASE/importers"
+rm -rf "$RELEASE/importers"
+mkdir -p "$RELEASE/importers"
+cp "$ROOT"/importers/*.py "$RELEASE/importers/"
 cp "$ROOT/templates/template.docx" "$RELEASE/templates/template.docx"
 cp "$ROOT/config.release.yaml" "$RELEASE/config.yaml"
 
@@ -71,70 +85,41 @@ EOF
 cat > "$RELEASE/组卷.bat" <<'EOF'
 @echo off
 chcp 65001 >nul
-set PYTHONUTF8=1
-set PYTHONIOENCODING=utf-8
 cd /d "%~dp0"
-set "PATH=%~dp0python;%PATH%"
-set "PYTHONPATH=%~dp0"
-echo 正在启动组卷界面…
-"%~dp0python\python.exe" "%~dp0app.py"
-echo.
-pause
-EOF
-
-cat > "$RELEASE/组卷-命令行.bat" <<'EOF'
-@echo off
-chcp 65001 >nul
-set PYTHONUTF8=1
-set PYTHONIOENCODING=utf-8
-cd /d "%~dp0"
-set "PATH=%~dp0python;%PATH%"
-set "PYTHONPATH=%~dp0"
-"%~dp0python\python.exe" "%~dp0main.py" %*
-echo.
-pause
+start "" "%~dp0组卷工具.exe"
 EOF
 
 cat > "$RELEASE/使用说明.txt" <<'EOF'
-710型船柴油机专业操作技能自动组卷系统（Windows 离线版）
+组卷工具（Windows 离线版）
 
-【无需安装 Python，无需联网】
+【一键使用】
+1. 解压整个文件夹到任意位置（如 D:\组卷工具）
+2. 双击「组卷工具.exe」或「ZujuanTool.exe」
+3. 浏览器打开组卷界面（若未自动打开，访问 http://127.0.0.1:8765/）
+4. 填写四个题库路径后点「生成试卷」
 
-【首次使用】
-1. 解压整个「组卷工具」文件夹到任意位置（如 D:\组卷工具）
-2. 把四个题库 .xls 放入「题库」文件夹，或记住它们的完整路径
-3. 双击「组卷.bat」
-4. 浏览器会打开组卷界面（若未自动打开，访问 http://127.0.0.1:8765/）
-5. 填写单选/多选/判断/简答四个题库路径、题量、份数后，点「生成试卷」
+无需安装 Python，无需联网，免费使用。
 
-【每次组卷】
-  双击 组卷.bat → 在网页界面操作 → 到输出目录取 .docx
+【注意】
+请保留整个文件夹一起使用（不要只拷贝单个 exe）。
+exe 旁边必须有 python、app.py、templates、config.yaml 等文件。
 
-【命令行（可选）】
-  双击 组卷-命令行.bat
-  或：python\python.exe main.py --count 2 --seed 42
-
-【修改默认题量等】
-  可编辑 config.yaml；界面上的设置会优先生效，并记住到 ui_state.yaml
-
-【输出位置】
-  默认桌面，可在界面或 config.yaml 的 output.dir 修改
-
-【说明】
-  本包为「内置 Python 的文件夹」，不是单个 .exe。
-  若必须只要一个 .exe，请在 Windows 电脑上运行 scripts\build_release.bat 打包。
+【输出】
+默认生成到桌面。
 EOF
 
-echo "==> 打包 zip 到桌面"
+echo "==> 打包 zip 到桌面（扁平结构，解压即见 exe）"
 rm -f "$ZIP_OUT"
-(cd "$ROOT/release" && zip -r "$ZIP_OUT" "组卷工具")
+STAGE="$ROOT/release/ZujuanTool"
+rm -rf "$STAGE"
+cp -R "$RELEASE" "$STAGE"
+(cd "$STAGE" && zip -r "$ZIP_OUT" . -x "*.pyc" -x "*__pycache__*")
 
 echo ""
 echo "完成！"
 echo "  文件夹: $RELEASE"
 echo "  压缩包: $ZIP_OUT"
 echo ""
-echo "请将 zip 拷到离线 Windows 电脑："
-echo "  1. 右键 zip → 全部解压缩"
-echo "  2. 双击 组卷.bat 打开界面"
-echo "  3. 填写四个题库路径后生成试卷"
+echo "拷到 Windows 后："
+echo "  1. 解压（解压后应直接看到 组卷工具.exe）"
+echo "  2. 双击 组卷工具.exe"
