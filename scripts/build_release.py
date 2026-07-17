@@ -98,29 +98,23 @@ def _write_readme(release_dir: Path) -> None:
     readme.write_text(
         "\n".join(
             [
-                "710型船柴油机专业操作技能自动组卷系统（Windows 离线版）",
+                "组卷工具（Windows）",
                 "",
-                "【首次使用】",
-                "1. 将整个「组卷工具」文件夹复制到目标 Windows 电脑",
-                "2. 把四个题库 .xls 放入「题库」文件夹，或在界面中粘贴完整路径",
-                "3. 双击「组卷工具.exe」（或 组卷.bat）启动组卷界面",
-                "4. 填写单选/多选/判断/简答路径与题量，点「生成试卷」",
-                "5. 无需安装 Python，可免费使用",
+                "【一键使用】",
+                "1. 解压本文件夹到任意位置（如 D:\\组卷工具）",
+                "2. 双击「组卷工具.exe」",
+                "3. 在界面填写四个题库路径（单选/多选/判断/简答），点「生成试卷」",
                 "",
-                "【目录说明】",
-                f"  {EXE_NAME}       主程序（双击即可）",
-                "  组卷.bat             备用启动",
-                "  组卷-命令行.bat      命令行模式",
-                "  config.yaml          默认题量、输出目录、题库路径",
-                "  题库/                自行放入四个 Excel 题库",
+                "无需安装 Python，无需联网，免费使用。",
                 "",
-                "【命令行（可选）】",
-                "  组卷工具.exe --cli",
-                "  组卷工具.exe --count 10 --seed 42",
+                "【题库】",
+                "可把四个 .xls 放进「题库」文件夹，也可在界面里粘贴完整路径。",
                 "",
                 "【输出】",
-                "  默认桌面：待命名试卷_1.docx、待命名试卷_2.docx ...",
-                "  同一批次内各卷题目不重复",
+                "默认生成到桌面：待命名试卷_1.docx …",
+                "",
+                "【注意】",
+                "请保留整个文件夹一起拷贝（exe 旁边的 config.yaml、templates 不要删）。",
                 "",
             ]
         ),
@@ -128,7 +122,20 @@ def _write_readme(release_dir: Path) -> None:
     )
 
 
-def build_release() -> Path:
+def _make_zip(release_dir: Path) -> Path:
+    zip_path = RELEASE / "组卷工具-Windows"
+    if zip_path.with_suffix(".zip").exists():
+        zip_path.with_suffix(".zip").unlink()
+    archive = shutil.make_archive(
+        str(zip_path),
+        "zip",
+        root_dir=str(release_dir.parent),
+        base_dir=release_dir.name,
+    )
+    return Path(archive)
+
+
+def build_release(*, make_zip: bool = False) -> Path:
     if shutil.which("pyinstaller") is None:
         _run([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
@@ -158,6 +165,11 @@ def build_release() -> Path:
     else:
         shutil.copy2(built_exe, release_dir / EXE_NAME)
 
+    # 确保模板目录在 exe 旁也有一份（便于检查；PyInstaller 已内嵌）
+    templates_dir = release_dir / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / "templates" / "template.docx", templates_dir / "template.docx")
+
     shutil.copy2(ROOT / "config.release.yaml", release_dir / "config.yaml")
     _prepare_question_bank_dir(release_dir)
 
@@ -168,15 +180,28 @@ def build_release() -> Path:
     _write_readme(release_dir)
 
     print(f"\n发布目录已生成: {release_dir}")
-    if platform.system() != "Windows":
-        print("注意：当前为 Mac 打包，Windows 目标机请在 Windows 上运行 scripts\\build_release.bat 生成 .exe。")
-    print("发布包不含题库，请将 release/组卷工具 文件夹复制到离线 Windows 电脑使用。")
+    if platform.system() == "Windows":
+        print("用户用法：解压后双击 组卷工具.exe")
+    else:
+        print("注意：当前不是 Windows，产物不是 .exe。请用 GitHub Actions 或 Windows 机打包。")
+
+    if make_zip:
+        zip_file = _make_zip(release_dir)
+        print(f"压缩包已生成: {zip_file}")
+
     return release_dir
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="打包组卷工具发布目录")
+    parser.add_argument(
+        "--zip",
+        action="store_true",
+        help="同时生成 release/组卷工具-Windows.zip",
+    )
+    args = parser.parse_args()
     try:
-        build_release()
+        build_release(make_zip=args.zip)
     except subprocess.CalledProcessError as exc:
         raise SystemExit(f"打包失败: {exc}") from exc
 
