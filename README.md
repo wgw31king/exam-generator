@@ -111,11 +111,12 @@ python -m pytest tests/ -q          # 测试
 
 ## 麒麟 ARM 离线包
 
-分支建议：`feat/kylin-portable`
+分支：`feat/kylin-portable`
 
 ```bash
 bash scripts/build_kylin_arm_portable.sh
 ```
 
 产物：桌面 `组卷工具-麒麟ARM离线版.zip`（aarch64 / 飞腾麒麟）。
-解压后执行 `./组卷.sh` 打开网页组卷界面。
+
+麒麟上用法：解压后双击 `组卷.desktop` 或 `首次使用-双击我.sh`（首次建议后者，会创建桌面图标）。

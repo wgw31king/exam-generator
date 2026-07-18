@@ -183,68 +183,105 @@ chmod +x "$RELEASE/转换题库格式.sh"
 cat > "$RELEASE/安装桌面快捷方式.sh" <<'EOF'
 #!/bin/bash
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+chmod +x "$ROOT"/*.sh "$ROOT"/*.desktop 2>/dev/null || true
 DESKTOP=""
 for d in "$HOME/桌面" "$HOME/Desktop"; do
   [[ -d "$d" ]] && DESKTOP="$d" && break
 done
 if [[ -z "$DESKTOP" ]]; then
-  echo "未找到桌面目录，请手动运行: $ROOT/组卷.sh"
+  echo "未找到桌面目录，请直接双击本目录中的「组卷.desktop」"
   exit 1
 fi
-chmod +x "$ROOT/组卷.sh"
-cat > "$DESKTOP/组卷工具.desktop" <<DESKTOP
+cat > "$DESKTOP/组卷.desktop" <<DESKTOP
 [Desktop Entry]
+Version=1.0
 Type=Application
 Name=组卷
 Comment=自动组卷工具（麒麟离线版）
-Exec=$ROOT/组卷.sh
+Exec=$ROOT/start.sh
 Path=$ROOT
 Terminal=true
+StartupNotify=true
 Categories=Office;
 DESKTOP
-chmod +x "$DESKTOP/组卷工具.desktop"
-echo "已创建: $DESKTOP/组卷工具.desktop"
-echo "若双击无效，请在文件管理器中右键该快捷方式 → 允许启动 / 信任"
+chmod +x "$DESKTOP/组卷.desktop"
+# 标记为已信任（部分麒麟/GNOME 版本有效）
+command -v gio >/dev/null 2>&1 && gio set "$DESKTOP/组卷.desktop" metadata::trusted true 2>/dev/null || true
+echo "已创建桌面图标: $DESKTOP/组卷.desktop"
+echo "若双击无效：右键 → 属性 → 允许启动 / 信任此启动器"
 EOF
 chmod +x "$RELEASE/安装桌面快捷方式.sh"
+
+# 包内可直接双击的启动器（不依赖绝对路径）
+cat > "$RELEASE/组卷.desktop" <<'EOF'
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=组卷
+Comment=解压后双击即可启动（麒麟离线版）
+Exec=bash -c 'DIR="$(dirname "$(readlink -f "%k")")"; cd "$DIR" || exit 1; chmod +x start.sh 组卷.sh *.sh 2>/dev/null; exec ./start.sh'
+Terminal=true
+StartupNotify=true
+Categories=Office;
+EOF
+
+cat > "$RELEASE/Zujuan.desktop" <<'EOF'
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Zujuan
+Comment=Double-click to start exam generator
+Exec=bash -c 'DIR="$(dirname "$(readlink -f "%k")")"; cd "$DIR" || exit 1; chmod +x start.sh *.sh 2>/dev/null; exec ./start.sh'
+Terminal=true
+StartupNotify=true
+Categories=Office;
+EOF
+
+# 首次双击：赋权 + 装桌面图标 + 启动
+cat > "$RELEASE/首次使用-双击我.sh" <<'EOF'
+#!/bin/bash
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+chmod +x "$ROOT"/*.sh "$ROOT"/*.desktop 2>/dev/null || true
+command -v gio >/dev/null 2>&1 && {
+  gio set "$ROOT/组卷.desktop" metadata::trusted true 2>/dev/null || true
+  gio set "$ROOT/Zujuan.desktop" metadata::trusted true 2>/dev/null || true
+}
+"$ROOT/安装桌面快捷方式.sh" || true
+echo
+echo "正在启动组卷界面…"
+exec "$ROOT/start.sh"
+EOF
+chmod +x "$RELEASE/首次使用-双击我.sh"
+cp "$RELEASE/首次使用-双击我.sh" "$RELEASE/FIRST-RUN.sh"
+chmod +x "$RELEASE/FIRST-RUN.sh"
 
 cat > "$RELEASE/使用说明.txt" <<'EOF'
 组卷工具 — 银河麒麟飞腾 ARM 离线版
 
-【说明】
-  已内置 Linux ARM64 Python，解压即可用，无需联网、无需安装 Python。
-  默认打开网页组卷界面（http://127.0.0.1:8765/）。
+【最简单：解压后双击】
+1. 解压整个文件夹到任意位置（如 /home/kylin/组卷工具）
+2. 打开该文件夹，双击下面任一图标：
+   · 组卷.desktop
+   · Zujuan.desktop
+   · 首次使用-双击我.sh  /  FIRST-RUN.sh
+3. 若提示「不允许启动」：右键 → 允许启动 / 信任
+4. 浏览器打开组卷界面后，填写四个题库路径，点「生成试卷」
+
+建议首次运行「首次使用-双击我.sh」，它会自动赋权并在桌面创建「组卷」图标，
+之后可直接在桌面双击「组卷」。
 
 【适用系统】
-  银河麒麟 V10 / 飞腾等 ARM64（aarch64）电脑
-  （本包不适用于 x86_64 麒麟）
+  银河麒麟 V10 / 飞腾等 ARM64（aarch64）
+  本包不适用于 x86_64 麒麟
 
-【三步使用】
-1. 解压到任意目录，例如：
-   /home/kylin/组卷工具-麒麟ARM
-
-2. 打开终端进入目录：
-   cd /home/kylin/组卷工具-麒麟ARM
-   chmod +x start.sh 组卷.sh *.sh
-   ./start.sh
-   （或 ./组卷.sh，二者相同）
-
-3. 浏览器打开组卷界面后：
-   - 填写单选/多选/判断/简答四个题库路径（或把 xls 放进「题库」后在界面填写）
-   - 设置题量、份数，点「生成试卷」
-   - 默认输出到「桌面」
-
-【可选】
-  ./check-env.sh / ./环境检测.sh
-  ./install-desktop.sh / ./安装桌面快捷方式.sh
+【可选命令行】
+  ./start.sh / ./组卷.sh
   ./start-cli.sh / ./组卷-命令行.sh
-  ./convert-banks.sh / ./转换题库格式.sh
+  ./check-env.sh / ./环境检测.sh
 
 【输出】
   默认：~/桌面/待命名试卷_1.docx …
-
-【注意】
-  请保持整个文件夹一起使用，不要只拷贝单个脚本。
 EOF
 
 # ASCII 别名，避免部分环境中文文件名乱码
@@ -254,9 +291,9 @@ cp "$RELEASE/环境检测.sh" "$RELEASE/check-env.sh"
 cp "$RELEASE/安装桌面快捷方式.sh" "$RELEASE/install-desktop.sh"
 cp "$RELEASE/转换题库格式.sh" "$RELEASE/convert-banks.sh"
 cp "$RELEASE/使用说明.txt" "$RELEASE/README.txt"
-chmod +x "$RELEASE"/*.sh
+chmod +x "$RELEASE"/*.sh "$RELEASE"/*.desktop
 
-echo "==> 打包 zip（UTF-8 文件名 + 扁平结构）"
+echo "==> 打包 zip（UTF-8 文件名，保留可执行权限）"
 rm -f "$ZIP_OUT"
 STAGE="$ROOT/release/KylinArmPack"
 rm -rf "$STAGE"
@@ -264,8 +301,11 @@ cp -R "$RELEASE" "$STAGE"
 "$ROOT/.venv/bin/python" - <<PY
 from pathlib import Path
 import zipfile
-stage = Path("$STAGE")
-zip_path = Path("$ZIP_OUT")
+import stat
+
+stage = Path(r"$STAGE")
+zip_path = Path(r"$ZIP_OUT")
+exec_suffixes = {".sh", ".desktop"}
 with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
     for path in sorted(stage.rglob("*")):
         if not path.is_file():
@@ -275,7 +315,11 @@ with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         arc = path.relative_to(stage).as_posix()
         info = zipfile.ZipInfo(arc)
         info.compress_type = zipfile.ZIP_DEFLATED
-        info.flag_bits |= 0x800
+        info.flag_bits |= 0x800  # UTF-8
+        mode = 0o755 if (path.suffix in exec_suffixes) else 0o644
+        if path.stat().st_mode & stat.S_IXUSR:
+            mode = 0o755
+        info.external_attr = mode << 16
         zf.writestr(info, path.read_bytes())
 print("wrote", zip_path)
 PY
@@ -284,4 +328,4 @@ echo ""
 echo "完成！"
 echo "  目录: $RELEASE"
 echo "  压缩包: $ZIP_OUT"
-echo "  拷到飞腾麒麟后：解压 → chmod +x start.sh → ./start.sh"
+echo "  麒麟上：解压 → 双击「组卷.desktop」或「首次使用-双击我.sh」"
